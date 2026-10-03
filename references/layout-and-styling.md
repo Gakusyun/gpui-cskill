@@ -28,6 +28,11 @@ div()
     .children(iter.map(|x| div().child(x)))
 ```
 
+## Fonts
+
+`.font_family(..)`, `Font`, and `FontFallbacks` — including why `Font::fallbacks` is **not** a
+CSS font stack — are covered in `fonts-and-text.md`.
+
 ## Spacing scale
 
 Tailwind's rem scale (1rem = 16px by default, scaled by `window.rem_size()`):

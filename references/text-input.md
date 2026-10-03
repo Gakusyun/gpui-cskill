@@ -161,20 +161,21 @@ When the value is wider than the field you need the caret's pixel `x`. Shape the
 window's text system and use `split_at` / `width`:
 
 ```rust
-use gpui::{FontWeight, TextRun, px};
+use gpui::{Font, FontWeight, TextRun, px};
 
-// `window.text_style()` here is the *window default*, not the style inherited from the
-// enclosing divs: ancestors push their text style onto a window-level stack during layout,
-// and layout runs after `render`. If the field uses a custom family or weight, set it here
-// rather than trusting the default.
-let mut style = window.text_style();
-style.font_family = "JetBrains Mono".into();
-style.font_weight = FontWeight::MEDIUM;
-// (font *size* is not part of `Font` — it is the `px(..)` argument to `shape_line` below)
+// Measure with what you are about to paint with — NOT bare `window.text_style()`, which is
+// the *window default* during `render` (ancestors push their text style onto a window-level
+// stack during layout, and layout runs after `render`). Seed from it so features/style
+// survive, then override family and weight.
+let font = Font {
+    family: family_you_are_rendering_with.clone(),   // the *resolved* family from settings
+    weight: FontWeight::MEDIUM,
+    ..window.text_style().font()
+};
 
 let run = TextRun {
     len: self.value.len(),                 // byte length covered by the run
-    font: style.font(),                    // measuring only needs the font; colour is irrelevant
+    font,                                  // measuring only needs the font; colour is irrelevant
     ..Default::default()
 };
 
@@ -189,6 +190,29 @@ let caret_x = before.width();              // Pixels; read with .as_f32(), not .
 ```
 
 Feed `caret_x` into your scroll offset / `ScrollHandle` so the caret stays visible.
+
+If the family comes from user settings, measure with the **resolved** family — otherwise the
+caret drifts as soon as the user picks a different font.
+
+## Committing the field when it loses focus
+
+`Context::on_blur(&handle, window, listener)` fires only on the transition *away* from that
+handle. It needs a `&mut Window`, so register it where the focus handle is created, not inside
+`render`:
+
+```rust
+// Register once, where the view already exists (e.g. a `wire(..)` called from `new`).
+// `self._blur` stores the Subscription so it is not dropped (which would unsubscribe).
+self._blur = Some(cx.on_blur(&self.focus, window, |this, _window, cx| {
+    // commit the draft / persist the value here
+    this.commit(cx);
+}));
+```
+
+The returned `Subscription` must be stored on the view (or `.detach()`ed or it unsubscribes
+immediately). Trade-off: committing only on blur means the value lands when the user clicks away,
+so a live preview has to be pushed from `on_key_down` instead. A common middle ground is to keep a
+**draft** string for the caret/rendering and derive the committed value from it on each input.
 
 ## Limits and extensions
 

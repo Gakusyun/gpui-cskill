@@ -43,6 +43,9 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 | **An icon reserves its layout box but nothing is drawn** (an empty rectangle; the text beside it sits correctly) | The `Svg` has **no colour of its own**. `Svg::paint` guards on `style.text.color`; `None` skips `paint_svg` entirely. A `text_color` on an ancestor `Div` does **not** inherit to the `Svg`. Set `.text_color(..)` on the `Svg` itself — or use an `icon(path, size, tint)` helper with a required tint argument. **Do not** go looking at the asset path / `AssetSource`; a missing asset behaves differently. |
 | Icon appears as a flat silhouette / its SVG fills and strokes are ignored | `paint_svg` renders the SVG as an alpha mask tinted by `text_color`; multi-colour artwork cannot survive. Author icons as single-colour shapes. |
 | **Custom-titlebar Minimise / Maximise / Close buttons do nothing when pressed** (or the window just drags instead) | A `WindowControlArea::Drag` is on an **ancestor** of the buttons. Control hitboxes resolve in registration order, parents before children, so the `Drag` area captures the whole strip and the buttons never get `HTMINBUTTON`/`HTMAXBUTTON`/`HTCLOSE`. Move `Drag` to a **sibling** region. See `windows-and-globals.md`. |
+| **A CSS-style font stack silently renders in the system UI font** | `Font::fallbacks` participates only in *per-glyph* fallback; family selection uses `font.family` alone, and a missing family goes straight to the text system's stack. Filter the requested names against `TextSystem::all_font_names()` and pass the first installed name as the family. See `fonts-and-text.md`. |
+| Caret drifts away from the text in a custom-family or custom-size field | The measurement used `window.text_style()`, which during `render` is the **window default**, not the enclosing `Div`'s style. Measure with the font you actually paint with. See `text-input.md`. |
+| **A button inside a toolbar/container seems dead** (its value was just cleared) | A parent `on_mouse_down` runs on the press, before the child's `on_click` on release. Return `cx.stop_propagation()` from the child's own `on_mouse_down`. See `state-events-and-input.md`. |
 
 ## Differences from upstream GPUI / Zed
 
@@ -73,11 +76,17 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 
 **Styling**
 `.flex*`, `.grid_*`, `.items_*`, `.justify_*`, `.gap_*`, `.p*/px*/py*/m*`, `.w/.h/.size*`,
-`.bg`, `.text_*`, `.font_weight`, `.rounded*`, `.border*`, `.shadow*`, `.overflow_*`,
+`.bg`, `.text_*`, `.font_weight`, `.font_family`, `.font(Font)`, `.rounded*`, `.border*`, `.shadow*`,
+`.overflow_*`,
 `.absolute/.relative`, `.cursor_*`, `.when/.when_some/.when_else/.map`,
 `.hover/.active/.focus/.focus_visible`, `.group/.group_hover`, `.occlude/.block_mouse_except_scroll`,
 `.transitions`,
 `.blur/.backdrop_blur`, `.rounded_smoothing`, `.bg(linear_gradient(..))`.
+
+**Fonts & text**
+`Font`, `FontWeight`, `FontStyle`, `FontFeatures`, `FontFallbacks::from_fonts(..)`,
+`TextStyle`, `TextStyleRefinement`, `TextRun`, `window.text_style()`, `window.text_system()`,
+`TextSystem::all_font_names()`, `shape_line(..)`.
 
 **Colors**
 `rgb`, `rgba` (`Rgba`); `hsla`, `white`, `black`, `transparent_black`, `red`, `green`, `blue`,

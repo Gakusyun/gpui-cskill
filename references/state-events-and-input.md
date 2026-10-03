@@ -113,6 +113,22 @@ Two facts that are easy to get wrong:
   timer task therefore cannot check focus; drive the blink from a frame tick or from an
   existing poll loop instead, or cache the focused flag in the entity on focus events.
 
+### Mouse and key events bubble
+
+Mouse handlers **bubble**: a press is dispatched through the tree before the `on_click` that fires
+on release, so a parent's `on_mouse_down` still runs when the user clicks a button inside it. The
+classic breakage is a toolbar whose press handler clears a text field: clicking "Add" first wipes
+the value, then the button submits an empty field and looks dead. Swallow the press on the child:
+
+```rust
+div()
+    .id("submit")
+    .on_mouse_down(MouseButton::Left, |_: &MouseDownEvent, _, cx| cx.stop_propagation())
+    .on_click(cx.listener(|this, _, _, cx| this.submit(cx)))
+```
+
+`App::stop_propagation()` stops further bubbling; the child's own `on_click` still fires.
+
 Tab order:
 
 ```rust
