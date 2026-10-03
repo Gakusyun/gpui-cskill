@@ -48,6 +48,11 @@ let installed = cx.text_system().all_font_names();   // canonical spellings
 // survivor as `family` (or `.font_family(..)`) and the rest as `FontFallbacks`.
 ```
 
+One more sharp edge: a line's fallback list is applied **from the first run only**. The Windows
+backend builds its `IDWriteTextFormat1` (and calls `SetFontFallback`) from `font_runs[0]`; later
+runs set their own family/size/style but never their fallbacks. So when one element mixes fonts,
+only the first run's list is honoured.
+
 ## Measuring text (caret / truncation / scroll)
 
 `TextStyle` is a plain struct with public fields; `TextStyle::font()` returns a `Font`. To get a

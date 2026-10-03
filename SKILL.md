@@ -92,6 +92,7 @@ All paths are relative to this skill's directory. Read the smallest set that cov
 | `references/layout-and-styling.md` | lay out or style anything (flex/grid/spacing/colors/blur/transitions) |
 | `references/state-events-and-input.md` | wire up events, focus, actions, keybindings, observe/subscribe/emit |
 | `references/text-input.md` | build a text field/textarea from scratch (focus, key handling, caret, paste) |
+| `references/text-input-ime-and-selection.md` | platform input handler (IME/plain text) + selection for a hand-rolled field |
 | `references/fonts-and-text.md` | font families/fallbacks, text sizing, measuring text runs |
 | `references/async.md` | spawn tasks, timers, background work, cancel/detach |
 | `references/lists-and-scrolling.md` | virtualized/uniform lists, scrolling, `ListState`/`ScrollHandle` |

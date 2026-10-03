@@ -46,6 +46,8 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 | **A CSS-style font stack silently renders in the system UI font** | `Font::fallbacks` participates only in *per-glyph* fallback; family selection uses `font.family` alone, and a missing family goes straight to the text system's stack. Filter the requested names against `TextSystem::all_font_names()` and pass the first installed name as the family. See `fonts-and-text.md`. |
 | Caret drifts away from the text in a custom-family or custom-size field | The measurement used `window.text_style()`, which during `render` is the **window default**, not the enclosing `Div`'s style. Measure with the font you actually paint with. See `text-input.md`. |
 | **A button inside a toolbar/container seems dead** (its value was just cleared) | A parent `on_mouse_down` runs on the press, before the child's `on_click` on release. Return `cx.stop_propagation()` from the child's own `on_mouse_down`. See `state-events-and-input.md`. |
+| **A hand-rolled text field types nothing** (or drops Chinese/Japanese with no error) | On Windows every typed character goes to the field's input handler (`WM_CHAR`), not to `key_char`. Register `EntityInputHandler` via `window.handle_input(..)` during paint. See `text-input-ime-and-selection.md`. |
+| **Every character is inserted twice** after adding IME support | Both the input handler *and* the `on_key_down` `key_char` branch are inserting. Keep only the handler for text; leave `on_key_down` to non-text keys. |
 
 ## Differences from upstream GPUI / Zed
 
@@ -86,7 +88,9 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 **Fonts & text**
 `Font`, `FontWeight`, `FontStyle`, `FontFeatures`, `FontFallbacks::from_fonts(..)`,
 `TextStyle`, `TextStyleRefinement`, `TextRun`, `window.text_style()`, `window.text_system()`,
-`TextSystem::all_font_names()`, `shape_line(..)`.
+`TextSystem::all_font_names()`, `shape_line(..)`,
+`EntityInputHandler`, `ElementInputHandler`, `window.handle_input(..)`, `UTF16Selection`,
+`ShapedLine::closest_index_for_x(..)`.
 
 **Colors**
 `rgb`, `rgba` (`Rgba`); `hsla`, `white`, `black`, `transparent_black`, `red`, `green`, `blue`,

@@ -62,6 +62,13 @@ Typed characters arrive in `keystroke.key_char` (`Option<String>`) — **not** i
 which is the physical key (`"a"`, `"backspace"`, …). Shift/caps/AltGr already fold into
 `key_char`; `key` stays ASCII so shortcuts keep working.
 
+> **This is the ASCII-only shortcut.** On Windows the platform delivers typed characters through
+> the field's input handler (`WM_CHAR` → `EntityInputHandler`), and `key_char` is a parallel path
+> that happens to work for Latin text. A field built on `key_char` alone silently drops CJK/IME
+> composition. If the field must accept Chinese/Japanese input (or you want native IME behaviour),
+> register a handler — see `text-input-ime-and-selection.md`. Do **not** do both in the same field,
+> or every character is inserted twice.
+
 ```rust
 impl TextField {
     fn on_key(&mut self, event: &KeyDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
@@ -216,12 +223,10 @@ so a live preview has to be pushed from `on_key_down` instead. A common middle g
 
 ## Limits and extensions
 
-- **No selection yet.** Track an anchor alongside `cursor`, render the selected range with a
-  background color, and make `Delete`/typing replace it. All of the string math stays byte-indexed.
-- **IME / CJK / dead keys.** `key_char` covers plain Latin typing, but real composition (Chinese,
-  Japanese, emoji picker, dead keys) needs the `EntityInputHandler` trait. Implement it for the
-  view and register it during paint with `window.handle_input(&self.focus, ElementInputHandler::new(bounds, cx.entity()), cx)`
-  (see `gpui::EntityInputHandler` / `gpui::ElementInputHandler`).
+- **Selection and IME are their own topic** — see `text-input-ime-and-selection.md`.
+  `key_char` is not the real text path on Windows; a field that must accept Chinese/Japanese needs
+  an `EntityInputHandler` registered during paint, and selection (anchor, drag, `closest_index_for_x`)
+  is tracked by hand. Do not skip that file if either applies.
 - **Multi-line** needs wrapping and a line-indexed caret. Consider a custom `Element`, or split
   the value on `\n` and render one row per line with per-line caret placement.
 - **Password fields** are the same widget; render `•` per character instead of the value.
