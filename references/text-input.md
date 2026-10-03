@@ -6,7 +6,8 @@ element set is `div`, `text`, `img`, `svg`, `list`, `uniform_list`, `canvas`, `d
 assembled from a focus-tracked `div` plus key handling.
 
 This file is the minimal, working recipe. It covers a single-line field with a caret and
-clipboard paste. Selection, IME composition, and multi-line layout are extensions noted at the
+clipboard paste. Selection and IME composition — and the platform input handler that is the real
+text path on Windows — are in `text-input-ime-and-selection.md`; multi-line layout is noted at the
 end.
 
 ## 1. State and focus
@@ -56,18 +57,30 @@ div()
 let focused = self.focus.is_focused(window); // in Render::render
 ```
 
+> **Checklist — every item is load-bearing, and a missing one fails silently:**
+>
+> 1. `.id(..)` + **`.track_focus(&self.focus)`** on the element that handles keys — `track_focus`
+>    is what registers the handle in the dispatch tree. Omit it and `is_focused()` still returns
+>    `true` (caret and focus ring draw), yet key dispatch falls back to the framework's root node
+>    (`DispatchNodeId(0)`, *not* your outermost `div`) and every `on_key_down` — on the field and on
+>    its ancestors — is discarded with no warning.
+> 2. `window.focus(&self.focus, cx)` on click (above); `track_focus` alone does not focus on
+>    click.
+> 3. Register the platform input handler during paint
+>    (`text-input-ime-and-selection.md`) — otherwise typed text (including ASCII) is dropped on
+>    Windows.
+> 4. `Context::on_blur` for commit-on-blur, if needed (see below).
+
 ## 3. Key handling
 
 Typed characters arrive in `keystroke.key_char` (`Option<String>`) — **not** in `keystroke.key`,
 which is the physical key (`"a"`, `"backspace"`, …). Shift/caps/AltGr already fold into
 `key_char`; `key` stays ASCII so shortcuts keep working.
 
-> **This is the ASCII-only shortcut.** On Windows the platform delivers typed characters through
-> the field's input handler (`WM_CHAR` → `EntityInputHandler`), and `key_char` is a parallel path
-> that happens to work for Latin text. A field built on `key_char` alone silently drops CJK/IME
-> composition. If the field must accept Chinese/Japanese input (or you want native IME behaviour),
-> register a handler — see `text-input-ime-and-selection.md`. Do **not** do both in the same field,
-> or every character is inserted twice.
+> **This is the ASCII-only shortcut.** On Windows typed characters come through the field's input
+> handler (`WM_CHAR` → `EntityInputHandler`); `key_char` works for Latin text but silently drops
+> CJK/IME composition. For Chinese/Japanese, register a handler
+> (`text-input-ime-and-selection.md`), and do **not** also insert `key_char`, or characters arrive twice.
 
 ```rust
 impl TextField {
@@ -220,6 +233,10 @@ The returned `Subscription` must be stored on the view (or `.detach()`ed or it u
 immediately). Trade-off: committing only on blur means the value lands when the user clicks away,
 so a live preview has to be pushed from `on_key_down` instead. A common middle ground is to keep a
 **draft** string for the caret/rendering and derive the committed value from it on each input.
+
+**GPUI does not blur on click-away.** Clicking elsewhere in the window leaves the field focused;
+if you want click-away-to-commit, either call `window.blur()` yourself (e.g. from a root-level
+`on_mouse_down`) or test the click position and blur when it lands outside the field's bounds.
 
 ## Limits and extensions
 

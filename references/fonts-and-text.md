@@ -43,9 +43,21 @@ missing family silently renders in the system UI font. A "first installed family
 to be resolved yourself:
 
 ```rust
-let installed = cx.text_system().all_font_names();   // canonical spellings
-// Walk the requested names in order, drop any not in `installed`, pass the first
-// survivor as `family` (or `.font_family(..)`) and the rest as `FontFallbacks`.
+use gpui::{App, FontFallbacks, SharedString};
+
+/// Turn a CSS-style "first installed wins" list into GPUI's family + per-glyph fallbacks.
+fn resolve_family(cx: &App, wanted: &[&str]) -> (SharedString, Option<FontFallbacks>) {
+    let installed = cx.text_system().all_font_names();   // canonical spellings
+    let mut present: Vec<String> = wanted
+        .iter()
+        .filter(|name| installed.iter().any(|f| f.eq_ignore_ascii_case(name)))
+        .map(|name| (*name).to_string())
+        .collect();
+    let family = present.first().cloned().unwrap_or_else(|| ".SystemUIFont".into());
+    // The winner becomes the family; the rest are per-glyph fallbacks for glyphs it lacks.
+    let fallbacks = (!present.is_empty()).then(|| FontFallbacks::from_fonts(present.split_off(1)));
+    (family.into(), fallbacks)
+}
 ```
 
 One more sharp edge: a line's fallback list is applied **from the first run only**. The Windows

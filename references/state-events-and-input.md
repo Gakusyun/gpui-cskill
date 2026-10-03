@@ -87,6 +87,12 @@ div()
     .on_key_down(cx.listener(Self::on_key))
 ```
 
+> **Omitting `track_focus` is a silent failure.** The focus handle is then never registered in the
+> dispatch tree; `FocusHandle::is_focused(window)` still returns `true` (so a caret and focus ring
+> draw normally), but key dispatch falls back to the framework's root node and every `on_key_down`
+> on the element — and on its ancestors — is discarded without a warning. See the checklist in
+> `text-input.md`.
+
 Two facts that are easy to get wrong:
 
 - **`track_focus` alone does not focus on click.** A mouse press does not move focus into the
@@ -127,7 +133,11 @@ div()
     .on_click(cx.listener(|this, _, _, cx| this.submit(cx)))
 ```
 
-`App::stop_propagation()` stops further bubbling; the child's own `on_click` still fires.
+`App::stop_propagation()` stops further bubbling; the child's own `on_click` still fires. It only
+suppresses listeners that come *after* the current one in the dispatch order, so it has to be
+called by the element that sees the event first (the deepest hitbox, i.e. the child). Listeners
+added at window level with `window.on_mouse_event` live in the same registry and obey the same
+ordering.
 
 Tab order:
 
