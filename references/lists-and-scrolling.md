@@ -108,7 +108,8 @@ list(self.state.clone(), |ix, _window, _cx| {
 `ListAlignment::Top` scrolls like a normal list; `ListAlignment::Bottom` is for chat-log style
 lists that grow from the bottom.
 
-Useful `ListState` methods: `measure_all()` (exact scrollbar on the first frame),
+Useful `ListState` methods: `measure_all()` (measure the whole list up front, so scroll
+extents/offsets are exact on the first frame),
 `with_uniform_item_height(px(..))` (cheap height hint), `remeasure()`, `remeasure_items(range)`,
 `reset(count)`, `reset_with_uniform_height(count, px(..))`, `splice(range, count)`,
 `splice_focusable(range, focus_handles)`, `item_count()`, `is_scrolled_to_end()`,
@@ -150,9 +151,57 @@ let max = self.scroll.max_offset();
 
 `uniform_list(..)` has its own `UniformListScrollHandle` via `.track_scroll(&handle)`.
 
+## Scrollbars
+
+gpui-ce 0.2.2 has **no scrollbar renderer**: `overflow_scroll()` / `overflow_y_scroll()` scroll
+with the wheel (or a `ScrollHandle` / `ListState`), but never draw a track, thumb, hover reveal, or
+drag affordance. There is also **no `.overflow_fade(...)`** — it is not a method, function, or type.
+
+`.scrollbar_width(...)` is **layout-only**: it reserves space next to an `Overflow::Scroll` node,
+and already defaults to `0`. With `0`, `Scroll` behaves like `Hidden` (the crate's own wording) —
+content simply clips at the edge:
+
+```rust
+div().id("scroller").overflow_y_scroll().scrollbar_width(px(12.))
+```
+
+A visible bar or edge fade has to be painted by hand. `ScrollHandle` gives you the numbers to
+drive it — it is `Clone`, `offset()` is the current position, and `max_offset()` is the scrollable
+range `(content - viewport)`; both return `Point<Pixels>`:
+
+```rust
+div()
+    .relative()
+    .child(
+        div()
+            .id("scroller")
+            .size_full()
+            .overflow_y_scroll()
+            .track_scroll(&self.scroll)
+            .children(rows),
+    )
+    // Sibling overlay, not a child of the scroller, or it scrolls with the content.
+    .child(div().absolute().top_0().right_0().w(px(8.)).h(px(40.)).bg(rgb(0x888888)))
+```
+
+## Decorative overlays don't block the wheel
+
+A `Div` inserts a hitbox (`Div::should_insert_hitbox`) only when it has a listener, a
+`mouse_cursor`, a `group` / `group_hover`, a `tracked_focus_handle`, a `scroll_offset`, or a
+non-`Normal` `hitbox_behavior`. A plain absolutely-positioned overlay has none of these, so it has
+**no hitbox**: wheel and click fall straight through to the scroller beneath it. There is no
+`pointer-events: none` equivalent to remember:
+
+```rust
+// Painted over the list edge; the wheel still scrolls the list below.
+div().absolute().bottom_0().left_0().w_full().h(px(48.)).bg(rgba(0x00000080))
+```
+
+Adding `.hover(..)`, `.on_click(..)`, `.group(..)`, `.occlude()`, or `.block_mouse_except_scroll()`
+sets one of those conditions, so the overlay starts capturing those events.
+
 ## Details
 
 - Scroll containers must be size-bounded, or they grow instead of scrolling.
-- Hiding/restyling scrollbars: `.scrollbar_width(px(0.))`, `.overflow_fade(...)`.
 - Custom wheel handling: `.on_scroll_wheel(...)` on the element, or `window.on_scroll_wheel`
   inside a custom `Element`.

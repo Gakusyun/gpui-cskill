@@ -29,6 +29,7 @@
 | `no method named ... found` for a text field / `gpui::TextInput` missing | There is **no built-in text input**; build one (see `text-input.md`). |
 | Loop rows share state / wrong row updates | Add a stable per-row `.id(...)`, or `window.use_keyed_state(key, ..)`. |
 | `ListState::default()` not found | `ListState::new(item_count, ListAlignment::Top, px(overdraw))`. |
+| `no method named overflow_fade found for Div` | There is no `.overflow_fade()` in gpui-ce 0.2.2, and `overflow_*_scroll()` draws **no** scrollbar at all. Build a bar/fade by hand; see `lists-and-scrolling.md`. |
 | Windows build fails | Install MSVC C++ build tools + Windows SDK; keep the default `windows-manifest` feature. |
 | `rust-version` / edition errors | Requires edition 2024 and Rust ≥ 1.95. |
 | Foreground task freezes the UI | Move blocking work to `cx.background_spawn` or await `background_executor().timer(..)`. |
@@ -57,6 +58,8 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 - No `h_flex()` / `v_flex()` helpers — use `div().flex().flex_row()/.flex_col()`.
 - `WindowOptions` has no `new()`/fluent setters; use a struct literal.
 - No built-in text input element.
+- No scrollbar renderer: `overflow_*_scroll()` scrolls but draws no track/thumb. `scrollbar_width`
+  only reserves layout space (default `0`); there is no `.overflow_fade()`.
 - `HttpClient` is GET-only (no POST, no headers).
 - Added: `.transitions(..)` style transitions, `Motion`/springs, `.blur`, `.backdrop_blur`,
   `.rounded_smoothing`, `container_query`, `surface`.
@@ -81,7 +84,7 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 **Styling**
 `.flex*`, `.grid_*`, `.items_*`, `.justify_*`, `.gap_*`, `.p*/px*/py*/m*`, `.w/.h/.size*`,
 `.bg`, `.text_*`, `.font_weight`, `.font_family`, `.font(Font)`, `.rounded*`, `.border*`, `.shadow*`,
-`.overflow_*`,
+`.overflow_*`, `.scrollbar_width`,
 `.absolute/.relative`, `.cursor_*`, `.when/.when_some/.when_else/.map`,
 `.hover/.active/.focus/.focus_visible`, `.group/.group_hover`, `.occlude/.block_mouse_except_scroll`,
 `.transitions`,
