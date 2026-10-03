@@ -19,6 +19,7 @@
 | `ElementId` type error | `.id()` takes `impl Into<ElementId>`: `&str`, `usize`, or tuples like `("row", ix)`. |
 | `field 0 of struct gpui::Pixels is private` | `Pixels(pub(crate) f32)`. Read it with `.as_f32()`, not `.0`. |
 | `captured variable cannot escape FnMut closure body` / `returns a reference to a captured variable which escapes the closure body` | Edition-2024 opaque types capture `cx`'s lifetime. Add `+ use<>` to the `impl IntoElement` return type, or build a `Vec<AnyElement>` and pass that to `.children(..)`. |
+| ``error: `impl Trait` must mention all type parameters in scope in `use<...>` `` | Fires when the function also has an **`impl Trait` parameter** (a closure/boxed handler is the common case): the opaque return type implicitly captures that anonymous parameter, so `+ use<>` is rejected. Either drop `use<>`, or name the generic and capture it: `fn f<H: Fn(&ClickEvent, &mut Window, &mut App) + 'static>(h: H) -> impl IntoElement + use<H>`. |
 | `expected Alpha<Rgb, f32>, found Alpha<Hsl, f32>` | `rgb`/`rgba` are `Rgba`; `white`/`black`/named colors are `Hsla`. Pick one type per theme; convert with `rgb_to_hsla`/`hsla_to_rgba`. |
 | `the trait bound LinearColorStop: From<..> is not satisfied` | Gradients need explicit stops: `linear_color_stop(color, pct)` inside `linear_gradient(angle, from, to)`. |
 | `no method named data found for Svg` | `Svg` only has `.path(..)` and `.external_path(..)`. Embed bytes via an `AssetSource`, not `.data(..)`. |
@@ -74,7 +75,8 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 `.flex*`, `.grid_*`, `.items_*`, `.justify_*`, `.gap_*`, `.p*/px*/py*/m*`, `.w/.h/.size*`,
 `.bg`, `.text_*`, `.font_weight`, `.rounded*`, `.border*`, `.shadow*`, `.overflow_*`,
 `.absolute/.relative`, `.cursor_*`, `.when/.when_some/.when_else/.map`,
-`.hover/.active/.focus/.focus_visible`, `.group/.group_hover`, `.transitions`,
+`.hover/.active/.focus/.focus_visible`, `.group/.group_hover`, `.occlude/.block_mouse_except_scroll`,
+`.transitions`,
 `.blur/.backdrop_blur`, `.rounded_smoothing`, `.bg(linear_gradient(..))`.
 
 **Colors**
@@ -111,9 +113,16 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 `use_keyed_transition`, `.with_animation`, `.transitions`.
 
 **Windows & app**
-`WindowOptions`, `WindowBounds`, `TitlebarOptions`, `WindowKind`, `WindowAppearance`, `QuitMode`,
-`cx.open_window`, `cx.activate`, `cx.quit`, `cx.on_window_closed`, `cx.set_menus`,
-`cx.windows`, `cx.active_window`, `Global`, `cx.set_global`, `cx.global`, `cx.observe_global`.
+`WindowOptions`, `WindowBounds`, `TitlebarOptions`, `WindowKind`, `WindowControlArea`,
+`WindowAppearance`, `QuitMode`, `cx.open_window`, `cx.activate`, `cx.quit`, `cx.on_window_closed`,
+`cx.observe_window_appearance`, `cx.set_menus`, `cx.windows`, `cx.active_window`,
+`cx.prompt_for_paths`, `cx.prompt_for_new_path`, `PathPromptOptions`, `cx.open_url`,
+`cx.reveal_path`, `Global`, `cx.set_global`, `cx.global`, `cx.observe_global`.
+
+**Dialogs, prompts & overlays**
+`PathPromptOptions`, `cx.prompt_for_paths`, `cx.prompt_for_new_path`, `Window::prompt`,
+`PromptLevel`, `PromptButton`, `.occlude()`, `.block_mouse_except_scroll()`,
+`App::stop_propagation`, `deferred(..)`.
 
 ## When a signature is unclear
 

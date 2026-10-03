@@ -161,17 +161,26 @@ When the value is wider than the field you need the caret's pixel `x`. Shape the
 window's text system and use `split_at` / `width`:
 
 ```rust
-use gpui::{TextRun, px};
+use gpui::{FontWeight, TextRun, px};
+
+// `window.text_style()` here is the *window default*, not the style inherited from the
+// enclosing divs: ancestors push their text style onto a window-level stack during layout,
+// and layout runs after `render`. If the field uses a custom family or weight, set it here
+// rather than trusting the default.
+let mut style = window.text_style();
+style.font_family = "JetBrains Mono".into();
+style.font_weight = FontWeight::MEDIUM;
+// (font *size* is not part of `Font` — it is the `px(..)` argument to `shape_line` below)
 
 let run = TextRun {
     len: self.value.len(),                 // byte length covered by the run
-    font: window.text_style().font(),      // measuring only needs the font; color is irrelevant
+    font: style.font(),                    // measuring only needs the font; colour is irrelevant
     ..Default::default()
 };
 
 let line = window.text_system().shape_line(
     self.value.clone().into(),
-    px(13.),
+    px(13.),                               // the font size actually used for shaping
     &[run],
     None,                                  // force_width
 );

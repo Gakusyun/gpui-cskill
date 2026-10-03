@@ -96,7 +96,8 @@ All paths are relative to this skill's directory. Read the smallest set that cov
 | `references/lists-and-scrolling.md` | virtualized/uniform lists, scrolling, `ListState`/`ScrollHandle` |
 | `references/assets-and-drawing.md` | images/SVG/assets, `canvas`, custom elements/widgets |
 | `references/animation-and-motion.md` | `with_animation`, transitions, springs, motion |
-| `references/windows-and-globals.md` | window options/titlebars/lifecycle, globals, theming |
+| `references/windows-and-globals.md` | window options/titlebars/lifecycle, appearance, globals, theming |
+| `references/dialogs-and-overlays.md` | native file/save dialogs, the built-in message prompt, custom modal overlays |
 | `references/testing.md` | write `#[gpui::test]` tests, simulate input, run headless |
 | `references/pitfalls-and-api-index.md` | hit a compile error, or need a fast symbol lookup |
 

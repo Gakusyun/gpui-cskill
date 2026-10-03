@@ -76,6 +76,25 @@ div()
 
 `when`, `when_some`, `when_else`, and `map` come from `FluentBuilder` (in the prelude).
 
+## Styles do not inherit
+
+Unlike CSS, the style an element paints with is **self-contained**. GPUI starts from
+`Style::default()`, refines only that element's own base style, then layers its own
+hover / focus / group-hover / active / drag refinements. Nothing is inherited from ancestors.
+This one rule explains several otherwise-surprising behaviours:
+
+- `text_color` on a wrapper does **not** tint a child `svg()` — and an `Svg` with no colour of its
+  own is not painted at all. See `assets-and-drawing.md`.
+- Hover tints cannot be inherited either: attach them to the element itself, or drive them through
+  a named `group` / `group_hover` (below).
+- Measuring text with `window.text_style()` during `render` returns the **window default**, not the
+  enclosing `Div`'s style, because ancestors push their text style during layout, which runs after
+  `render`. See `text-input.md`.
+
+Text is the one exception: a `Div` pushes its text style onto a window-level stack while laying
+out its children, so `.text_size(..)` / `.text_color(..)` on an ancestor **does** reach descendant
+text — but still not `Svg`.
+
 ## Interaction pseudo-styles & groups
 
 ```rust

@@ -18,6 +18,11 @@ svg().path("icons/check.svg").size_4().text_color(rgb(0x22c55e));
   `.external_path(..)` (read from disk). **There is no `.data(&bytes)`.** To embed icon bytes,
   include them in an `AssetSource` implementation and reference them by `path` anyway.
 
+> Loading an asset from a known path is not the same as **asking the user for a path**. For a
+> native file / folder / save picker, use `cx.prompt_for_paths(..)` / `cx.prompt_for_new_path(..)`
+> — GPUI-CE ships real platform dialogs, so do **not** add a dialog crate. See
+> `dialogs-and-overlays.md`.
+
 ### SVG icons are alpha masks
 
 `Window::paint_svg` renders the SVG to an **alpha mask** and tints it with the `Svg` element's own

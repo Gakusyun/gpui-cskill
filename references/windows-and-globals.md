@@ -78,6 +78,39 @@ window.close(); / window.remove_window();
 Global element state lives on the window: `use_state`, `use_keyed_state`,
 `use_transition`, `use_keyed_transition`, `with_element_state`.
 
+## System appearance (light / dark)
+
+`window.appearance()` returns a `WindowAppearance`, which has **four** variants — `Light`,
+`VibrantLight`, `Dark`, `VibrantDark` — and **no `is_dark()` helper**. Match by hand:
+
+```rust
+use gpui::WindowAppearance;
+
+fn is_dark(appearance: WindowAppearance) -> bool {
+    matches!(appearance, WindowAppearance::Dark | WindowAppearance::VibrantDark)
+}
+
+let dark = is_dark(window.appearance());
+```
+
+To follow the system at runtime, subscribe with `Context::observe_window_appearance`:
+
+```rust
+self._appearance = Some(cx.observe_window_appearance(window, |this, window, cx| {
+    // `this` is &mut Self; re-theme here, then cx.notify() if you don't mutate `this`
+    this.set_theme(is_dark(window.appearance()), cx);
+}));
+```
+
+Two things about the subscription:
+
+- It returns a `Subscription`. **Store it** (e.g. in a field on the view) or call `.detach()`;
+  dropping it unsubscribes.
+- It fires only when the platform reports a **change**. Do not treat it as an initializer — read
+  `window.appearance()` (or set the theme once) at startup. If you need to re-theme a value shared
+  by many views, store the resolved theme in a `Global` (see below) and have views subscribe with
+  `cx.observe_global::<Theme>(..)`.
+
 ## App lifecycle
 
 ```rust
@@ -208,4 +241,6 @@ Related details:
   `is_movable`: if minimise is disabled but the window is movable, `Min` degrades to `HTCAPTION`;
   if neither, it becomes `HTNOWHERE`. `Close` is always `HTCLOSE`.
 - The three control areas are `Drag`, `Min`, `Max`, `Close`. `Max` toggles between maximised and
-  restored; you do not need to branch on `window.is_maximized()` yourself.
+  restored by itself (the OS handles `HTMAXBUTTON`), so keep the area as `Max` in both states and
+  only swap the button's **glyph** based on `window.is_maximized()` — do not add a click handler
+  or a second area for restore.
