@@ -22,6 +22,7 @@
 | `expected Alpha<Rgb, f32>, found Alpha<Hsl, f32>` | `rgb`/`rgba` are `Rgba`; `white`/`black`/named colors are `Hsla`. Pick one type per theme; convert with `rgb_to_hsla`/`hsla_to_rgba`. |
 | `the trait bound LinearColorStop: From<..> is not satisfied` | Gradients need explicit stops: `linear_color_stop(color, pct)` inside `linear_gradient(angle, from, to)`. |
 | `no method named data found for Svg` | `Svg` only has `.path(..)` and `.external_path(..)`. Embed bytes via an `AssetSource`, not `.data(..)`. |
+| `the trait bound SharedString: From<ElementId>` / `group_hover` rejects an element id | `group(name)` / `group_hover(name, ..)` take an `impl Into<SharedString>`, **not** an `ElementId`. Thread a separate `&str` name for the group. |
 | `unresolved import anyhow` (implementing `AssetSource`) | `cargo add anyhow`, or use `gpui::Result<..>` in the signatures. |
 | `no method named background_spawn found for &mut AsyncApp` | Import `AppContext` (easiest: `use gpui::prelude::*`). |
 | `no method named ... found` for a text field / `gpui::TextInput` missing | There is **no built-in text input**; build one (see `text-input.md`). |
@@ -31,6 +32,15 @@
 | `rust-version` / edition errors | Requires edition 2024 and Rust ≥ 1.95. |
 | Foreground task freezes the UI | Move blocking work to `cx.background_spawn` or await `background_executor().timer(..)`. |
 | Detached work silently stops | Dropping a `Task` cancels it; call `.detach()` or store it in a field. |
+
+## Silent runtime failures
+
+These compile fine and produce no warning or log; they show up only as wrong/empty pixels.
+
+| Symptom | Cause / fix |
+| --- | --- |
+| **An icon reserves its layout box but nothing is drawn** (an empty rectangle; the text beside it sits correctly) | The `Svg` has **no colour of its own**. `Svg::paint` guards on `style.text.color`; `None` skips `paint_svg` entirely. A `text_color` on an ancestor `Div` does **not** inherit to the `Svg`. Set `.text_color(..)` on the `Svg` itself — or use an `icon(path, size, tint)` helper with a required tint argument. **Do not** go looking at the asset path / `AssetSource`; a missing asset behaves differently. |
+| Icon appears as a flat silhouette / its SVG fills and strokes are ignored | `paint_svg` renders the SVG as an alpha mask tinted by `text_color`; multi-colour artwork cannot survive. Author icons as single-colour shapes. |
 
 ## Differences from upstream GPUI / Zed
 

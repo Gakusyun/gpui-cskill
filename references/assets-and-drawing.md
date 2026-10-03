@@ -20,19 +20,57 @@ svg().path("icons/check.svg").size_4().text_color(rgb(0x22c55e));
 
 ### SVG icons are alpha masks
 
-`Window::paint_svg` renders the SVG to an **alpha mask** and tints it with the element's
-`text_color`. Consequences:
+`Window::paint_svg` renders the SVG to an **alpha mask** and tints it with the `Svg` element's own
+`text_color`. Two consequences, one benign and one silent:
 
 - Icons are **monochrome by construction**. Multi-colour artwork silently becomes a silhouette
   and the SVG's own `fill` / `stroke` colours are ignored. Author icons as single-colour shapes.
-- Colour **cascades** from the parent, so hover states on icons are free:
+- **The tint does NOT inherit, and a `Svg` with no colour of its own is not drawn at all.**
+  `Svg::paint` only calls `paint_svg` when `style.text.color` is `Some`; there is no fallback,
+  default, or warning. A `text_color` on an ancestor `Div` never reaches the `Svg` — unlike text,
+  which inherits through a separate window-level text-style stack. The element is still laid out,
+  so the symptom is a correctly sized **empty** rectangle, which is easy to misread as a broken
+  asset path. See `pitfalls-and-api-index.md` for the exact symptom.
 
   ```rust
+  // NOT drawn: the Svg's own text.color stays None, so paint_svg is never called.
   div()
-      .id("btn")
-      .hover(|s| s.text_color(rgb(0x93c5fd)))
-      .child(svg().path("icons/x.svg").size_4())
+      .text_color(rgb(0x7c5cff))
+      .child(svg().path("icons/play.svg").size(px(16.)))
+
+  // drawn: the colour is on the Svg itself.
+  div()
+      .child(svg().path("icons/play.svg").size(px(16.)).text_color(rgb(0x7c5cff)))
   ```
+
+Because this fails silently, make the tint a **required argument** of an `icon(..)` helper so
+forgetting it is a compile error rather than an invisible icon:
+
+```rust
+use gpui::{px, rgb, svg, Rgba, SharedString, Svg};
+
+/// The tint is a parameter, not something set on the parent: a `Svg` does not inherit
+/// `text_color`, and paints nothing at all when it has no colour of its own.
+pub fn icon(path: impl Into<SharedString>, size: f32, tint: Rgba) -> Svg {
+    svg().path(path).size(px(size)).flex_none().text_color(tint)
+}
+```
+
+Hover tints then attach to the `Svg` too, against a **named group** on an ancestor (see the groups
+section of `layout-and-styling.md` — `group_hover` takes a name, not an `ElementId`):
+
+```rust
+let group = "row-actions";
+
+div()
+    .id(id)
+    .group(group)
+    .hover(move |style| style.bg(hover_bg))
+    .child(
+        icon("icons/bin.svg", 15.0, tint)
+            .group_hover(group, move |style| style.text_color(hover_tint)),
+    )
+```
 
 ## Registering an AssetSource
 

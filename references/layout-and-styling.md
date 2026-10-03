@@ -96,6 +96,27 @@ div()
 These are default methods on `InteractiveElement`, so they need an `.id(...)` when the element is
 also stateful (click/hover handlers, transitions).
 
+Both `group` and `group_hover` take a **name** (`impl Into<SharedString>`), **not an
+`ElementId`**:
+
+```rust
+fn group(self, group: impl Into<SharedString>) -> Self
+fn group_hover(self, group_name: impl Into<SharedString>, f: ..) -> Self
+```
+
+`ElementId` has no conversion to `SharedString`, so an element's id cannot double as its group name —
+thread a separate name through the widget (e.g. a `&'static str` alongside the numeric id).
+
+Three details that are easy to get wrong:
+
+- The ancestor must call **`.group(name)`**; `.id(name)` alone does not register a group.
+- `group_hover` resolves the name through a window-level hitbox registry, so the hovered
+  descendant does **not** need its own `.id()` or hitbox. This is why an `Svg` (which has no
+  meaningful `.id()`) can still get a group-driven hover tint.
+- Because the tint must live on the `Svg` anyway (it does not inherit `text_color`), the correct
+  hover-on-icon pattern is a named group on the parent plus `.group_hover(..)` on the `icon(..)`;
+  see `assets-and-drawing.md`.
+
 ## Colors
 
 ```rust
