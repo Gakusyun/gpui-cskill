@@ -1,0 +1,6 @@
+# Local GPUI-CE source checkout used only as authoring reference.
+# Must not be shipped with the skill.
+gpui-ce/
+
+# Local agent/collaboration notes.
+AGENT.md
