@@ -101,10 +101,33 @@ also stateful (click/hover handlers, transitions).
 ```rust
 use gpui::{rgb, rgba, hsla, white, black, transparent_black, red, green, blue, yellow};
 
-rgb(0x2a63d9);                       // opaque
-rgba(0xffffff30);                    // hex alpha
-hsla(0.6, 0.8, 0.5, 1.0);
+rgb(0x2a63d9);                       // -> Rgba (opaque)
+rgba(0xffffff30);                    // -> Rgba (hex alpha)
+hsla(0.6, 0.8, 0.5, 1.0);           // -> Hsla
+white(); black(); transparent_black(); // -> Hsla (also red/green/blue/yellow)
 colors.disabled.with_alpha(0.5);     // ColorExt / WithAlpha
+```
+
+**These are not one interchangeable type.** `rgb`/`rgba` return `Rgba`; `white`, `black`,
+`transparent_black` (and the other named colors) return `Hsla`. At a styling call site they are
+interchangeable because `.bg` / `.text_color` / `.border_color` accept `impl IntoColor<Hsla>`,
+but the moment you store one in a struct field the types clash:
+
+```text
+error[E0308]: mismatched types: expected `Alpha<Rgb, f32>`, found `Alpha<Hsl, f32>`
+```
+
+Worse, `ColorExt::opacity()` returns the receiver's own type, so `rgb(x).opacity(0.1)` is `Rgba`
+while `transparent_black().opacity(0.1)` is `Hsla` — mixing them silently changes a field's type.
+
+Pick **one** colour type for your theme and convert only at the boundary with the exported
+helpers:
+
+```rust
+use gpui::{rgb_to_hsla, hsla_to_rgba};
+
+let a: Hsla = rgb_to_hsla(rgb(0x2a63d9));
+let b: Rgba = hsla_to_rgba(transparent_black());
 ```
 
 Built-in palette:
@@ -149,3 +172,23 @@ div()
 
 `transitions` comes from `InteractiveElement`. For value/material animations (`with_animation`,
 `use_keyed_transition`), see `animation-and-motion.md`.
+
+## Gradients
+
+`linear_gradient(angle, from, to)` returns a `Background` for `.bg(...)`, but the stops must be
+built explicitly — **nothing implements `From<Hsla>`/`From<Rgba>` for `LinearColorStop`**, so
+passing a colour directly fails with `the trait bound LinearColorStop: From<...> is not
+satisfied`. Use `linear_color_stop(color, percentage)`:
+
+```rust
+use gpui::{linear_gradient, linear_color_stop, rgb};
+
+div().bg(linear_gradient(
+    90.0,
+    linear_color_stop(rgb(0x2a63d9), 0.0),
+    linear_color_stop(rgb(0x22d3ee), 1.0),
+))
+```
+
+The angle is in degrees: `0.0` points **up**, and larger values rotate **clockwise** (so `90.0`
+is left→right, `180.0` is top→bottom).

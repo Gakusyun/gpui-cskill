@@ -5,6 +5,8 @@
 | Symptom | Cause / fix |
 | --- | --- |
 | `no method named on_click/on_hover/on_drag found for Div` | Interactive methods need `.id(...)` (`StatefulInteractiveElement`). |
+| `no method named on_focus/on_blur/on_focus_in/on_focus_out found for Div` | These are **`Context<T>` methods, not element handlers**. To react to focus in `render`, use `self.focus.is_focused(window)`. |
+| `no associated function ... named new found for struct WindowOptions` | `WindowOptions` is a plain struct: build `WindowOptions { field: .., ..Default::default() }`. No `new()` / fluent setters. |
 | `Application::new` not found | There is none. Use `gpui_platform::application()` or `Application::with_platform(..)`. |
 | `cannot find crate gpui_platform` | Install with `cargo add gpui_ce_platform --rename gpui_platform`. |
 | `the parameter type may not live long enough` / `'static` | Clone `Entity`s, capture `WeakEntity`, use `cx.listener(..)` instead of holding `&self`. |
@@ -15,6 +17,14 @@
 | `.child(option)` does not compile | `Option<T>` is not `IntoElement`; use `.when_some(option, \|el, v\| el.child(v))`. |
 | View never updates | You forgot `cx.notify()`; observers only fire on `notify`. |
 | `ElementId` type error | `.id()` takes `impl Into<ElementId>`: `&str`, `usize`, or tuples like `("row", ix)`. |
+| `field 0 of struct gpui::Pixels is private` | `Pixels(pub(crate) f32)`. Read it with `.as_f32()`, not `.0`. |
+| `captured variable cannot escape FnMut closure body` / `returns a reference to a captured variable which escapes the closure body` | Edition-2024 opaque types capture `cx`'s lifetime. Add `+ use<>` to the `impl IntoElement` return type, or build a `Vec<AnyElement>` and pass that to `.children(..)`. |
+| `expected Alpha<Rgb, f32>, found Alpha<Hsl, f32>` | `rgb`/`rgba` are `Rgba`; `white`/`black`/named colors are `Hsla`. Pick one type per theme; convert with `rgb_to_hsla`/`hsla_to_rgba`. |
+| `the trait bound LinearColorStop: From<..> is not satisfied` | Gradients need explicit stops: `linear_color_stop(color, pct)` inside `linear_gradient(angle, from, to)`. |
+| `no method named data found for Svg` | `Svg` only has `.path(..)` and `.external_path(..)`. Embed bytes via an `AssetSource`, not `.data(..)`. |
+| `unresolved import anyhow` (implementing `AssetSource`) | `cargo add anyhow`, or use `gpui::Result<..>` in the signatures. |
+| `no method named background_spawn found for &mut AsyncApp` | Import `AppContext` (easiest: `use gpui::prelude::*`). |
+| `no method named ... found` for a text field / `gpui::TextInput` missing | There is **no built-in text input**; build one (see `text-input.md`). |
 | Loop rows share state / wrong row updates | Add a stable per-row `.id(...)`, or `window.use_keyed_state(key, ..)`. |
 | `ListState::default()` not found | `ListState::new(item_count, ListAlignment::Top, px(overdraw))`. |
 | Windows build fails | Install MSVC C++ build tools + Windows SDK; keep the default `windows-manifest` feature. |
@@ -26,6 +36,9 @@
 
 - Entry point is `gpui_platform::application()`, not `Application::new()`.
 - No `h_flex()` / `v_flex()` helpers — use `div().flex().flex_row()/.flex_col()`.
+- `WindowOptions` has no `new()`/fluent setters; use a struct literal.
+- No built-in text input element.
+- `HttpClient` is GET-only (no POST, no headers).
 - Added: `.transitions(..)` style transitions, `Motion`/springs, `.blur`, `.backdrop_blur`,
   `.rounded_smoothing`, `container_query`, `surface`.
 - Platform backends are split into `gpui_ce_platform` + per-OS crates; upstream assumes they are wired.
@@ -51,7 +64,12 @@
 `.bg`, `.text_*`, `.font_weight`, `.rounded*`, `.border*`, `.shadow*`, `.overflow_*`,
 `.absolute/.relative`, `.cursor_*`, `.when/.when_some/.when_else/.map`,
 `.hover/.active/.focus/.focus_visible`, `.group/.group_hover`, `.transitions`,
-`.blur/.backdrop_blur`, `.rounded_smoothing`.
+`.blur/.backdrop_blur`, `.rounded_smoothing`, `.bg(linear_gradient(..))`.
+
+**Colors**
+`rgb`, `rgba` (`Rgba`); `hsla`, `white`, `black`, `transparent_black`, `red`, `green`, `blue`,
+`yellow` (`Hsla`); `rgb_to_hsla`, `hsla_to_rgba`, `linear_color_stop`, `linear_gradient`,
+`ColorExt`/`WithAlpha`.
 
 **State & events**
 `cx.new`, `Entity::read/update/downgrade`, `cx.listener`, `cx.observe`, `cx.subscribe`, `cx.emit`,
@@ -60,8 +78,13 @@
 
 **Input & actions**
 `on_click`, `on_hover`, `on_mouse_down/up/move`, `on_key_down/up`, `on_scroll_wheel`, `on_pinch`,
-`on_drag`, `on_drop`, `on_focus`, `on_blur`, `on_action`, `capture_action`, `actions!`,
-`#[derive(Action)]`, `KeyBinding`, `Menu`, `MenuItem`, `cx.bind_keys`, `cx.set_menus`.
+`on_drag`, `on_drop`, `on_action`, `capture_action`, `actions!`, `#[derive(Action)]`,
+`KeyBinding`, `Menu`, `MenuItem`, `cx.bind_keys`, `cx.set_menus`.
+
+**Focus**
+`FocusHandle`, `track_focus`, `key_context`, `window.focus`, `window.focus_next/prev`,
+`FocusHandle::is_focused(&window)`, `cx.focus_self`, and the `Context<T>`-only listeners
+`cx.on_focus` / `cx.on_focus_in` / `cx.on_blur` / `cx.on_focus_out`.
 
 **Async**
 `cx.spawn`, `cx.background_spawn`, `background_executor().timer(..)`, `Task::detach`,

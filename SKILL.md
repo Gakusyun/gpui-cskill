@@ -49,7 +49,10 @@ fn main() {
     gpui_platform::application().run(|cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(640.), px(480.)), cx);
         cx.open_window(
-            WindowOptions::new().window_bounds(Some(WindowBounds::Windowed(bounds))),
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                ..Default::default()
+            },
             |_window, cx| cx.new(|_cx| Hello),
         )
         .expect("failed to open window");
@@ -73,6 +76,10 @@ fn main() {
 5. Closures must be `'static`: clone `Entity`s, capture `WeakEntity`s, use `cx.listener(...)`
    for `&mut self` access — never hold `&self` across a callback.
 6. This fork has **no `h_flex()` / `v_flex()`**; use `div().flex().flex_row()/flex_col()`.
+7. `WindowOptions` is a plain struct with public fields and **no `new()`/fluent setters** —
+   build it as a struct literal with `..Default::default()`.
+8. There is **no built-in text input element** (`gpui::TextInput`, `TextArea`, …). You build
+   one from `track_focus` + `on_key_down` + `is_focused`; see `references/text-input.md`.
 
 ## Reference index — load only what the task needs
 
@@ -84,6 +91,7 @@ All paths are relative to this skill's directory. Read the smallest set that cov
 | `references/core-concepts.md` | understand App/Window/Context/Entity/Render and how state is held |
 | `references/layout-and-styling.md` | lay out or style anything (flex/grid/spacing/colors/blur/transitions) |
 | `references/state-events-and-input.md` | wire up events, focus, actions, keybindings, observe/subscribe/emit |
+| `references/text-input.md` | build a text field/textarea from scratch (focus, key handling, caret, paste) |
 | `references/async.md` | spawn tasks, timers, background work, cancel/detach |
 | `references/lists-and-scrolling.md` | virtualized/uniform lists, scrolling, `ListState`/`ScrollHandle` |
 | `references/assets-and-drawing.md` | images/SVG/assets, `canvas`, custom elements/widgets |

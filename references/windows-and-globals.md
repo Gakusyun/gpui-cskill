@@ -2,6 +2,10 @@
 
 ## Opening windows
 
+`WindowOptions` is a **plain struct with public fields**. There is no `WindowOptions::new()`
+and no fluent setters, so always build it as a struct literal and fill the rest with
+`..Default::default()`:
+
 ```rust
 use gpui::{
     Bounds, px, size, TitlebarOptions, WindowBounds, WindowKind, WindowOptions,
@@ -10,23 +14,30 @@ use gpui::{
 let bounds = Bounds::centered(None, size(px(900.), px(600.)), cx); // None = primary display
 
 let handle = cx.open_window(
-    WindowOptions::new()
-        .window_bounds(Some(WindowBounds::Windowed(bounds)))   // Maximized / Fullscreen too
-        .titlebar(Some(TitlebarOptions {
+    WindowOptions {
+        window_bounds: Some(WindowBounds::Windowed(bounds)),   // Maximized / Fullscreen too
+        window_min_size: Some(size(px(720.), px(460.))),
+        titlebar: Some(TitlebarOptions {
             title: Some("My App".into()),
             appears_transparent: true,        // macOS + Windows: hide the native bar
             traffic_light_position: None,     // macOS
-        }))
-        .kind(WindowKind::Normal),            // see table below
+        }),
+        kind: WindowKind::Normal,             // see table below
+        ..Default::default()
+    },
     |window, cx| cx.new(|cx| MyView::new(window, cx)),
 )?;   // anyhow::Result<WindowHandle<V>>
 ```
+
+> `WindowOptions::new()` / `.window_bounds(..)` / `.titlebar(..)` do **not** exist in this
+> fork — attempting them gives `no associated function ... named new found for struct
+> WindowOptions`.
 
 `WindowKind`: `Normal`, `PopUp` (always-on-top, sparingly), `AnchoredPopup(PopupOptions)`
 (native parent-anchored popup for menus/comboboxes/tooltips), `Floating`, `Dialog`, and
 `LayerShell(..)` (Wayland only, behind the `wayland` feature).
 
-Other `WindowOptions` fields (all have fluent setters):
+Other `WindowOptions` fields (set them in the struct literal):
 
 | Field | Notes |
 | --- | --- |

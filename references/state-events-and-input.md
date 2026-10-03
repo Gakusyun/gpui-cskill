@@ -45,8 +45,13 @@ handler manually via `window.listener_for(&entity, ...)` or `window.handler_for(
 | Keyboard | `on_key_down`, `on_key_up`, `on_modifiers_changed` |
 | Scroll / pinch | `on_scroll_wheel`, `on_pinch` |
 | Drag & drop | `on_drag(data, \|data, position, window, cx\| cx.new(...))`, `on_drop(\|this, data, window, cx\|)` |
-| Focus | `on_focus`, `on_blur`, `on_focus_in`, `on_focus_out` |
 | Actions | `on_action(cx.listener(Self::handler))`, `capture_action` |
+
+> **`on_focus` / `on_blur` / `on_focus_in` / `on_focus_out` are NOT element handlers.**
+> They exist only on `Context<T>` (they subscribe the view to its *own* focus events).
+> `Div` / `StatefulInteractiveElement` have no such methods, so
+> `div().on_focus(..)` / `div().on_blur(..)` will not compile. To ask "is my field focused?"
+> inside `render`, call `self.focus.is_focused(window)` (see below).
 
 Drag example (make a source and a target):
 
@@ -71,7 +76,7 @@ div()
 ## Focus
 
 ```rust
-// Own a focus handle on the view
+// Own a focus handle on the view (e.g. cx.focus_handle() in the constructor)
 let focus_handle = cx.focus_handle();
 window.focus(&focus_handle, cx);
 
@@ -82,6 +87,32 @@ div()
     .on_key_down(cx.listener(Self::on_key))
 ```
 
+Two facts that are easy to get wrong:
+
+- **`track_focus` alone does not focus on click.** A mouse press does not move focus into the
+  element; you must do it explicitly:
+
+  ```rust
+  div()
+      .id("field")
+      .track_focus(&self.focus)
+      .on_mouse_down(MouseButton::Left, cx.listener(|this, _, window, cx| {
+          window.focus(&this.focus, cx);
+      }))
+  ```
+
+- **`FocusHandle::is_focused` takes a `&Window`, not an `&App`.**
+
+  ```rust
+  // inside Render::render — the usual way to tell "should I draw a caret / focus ring?"
+  let focused = self.focus.is_focused(window);
+  ```
+
+  Because it needs `&Window`, it is **unavailable inside `cx.spawn` / `background_spawn`
+  callbacks** (those only hand you an `&mut App` / `AsyncApp`). A self-contained blinking-caret
+  timer task therefore cannot check focus; drive the blink from a frame tick or from an
+  existing poll loop instead, or cache the focused flag in the entity on focus events.
+
 Tab order:
 
 ```rust
@@ -90,8 +121,9 @@ window.focus_next(cx);
 window.focus_prev(cx);
 ```
 
-Inside `Context<T>`: `cx.focus_self()`, `cx.on_focus(&handle, window, ...)`,
-`cx.on_focus_out(...)`, `cx.on_blur(...)`.
+Inside `Context<T>` (these *are* available here, just not as element methods):
+`cx.on_focus(&handle, window, ...)`, `cx.on_focus_in(...)`, `cx.on_blur(...)`,
+`cx.on_focus_out(...)`, and `cx.focus_self()`.
 
 ## Actions & keybindings
 

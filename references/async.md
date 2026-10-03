@@ -40,6 +40,11 @@ let value = task.await;          // await from a foreground task
 `cx.background_executor()` gives a `BackgroundExecutor` with `timer(Duration) -> Task<()>` and
 `spawn(future)`. The closure must be `Send + 'static`.
 
+> `background_spawn` is a method of the `AppContext` trait. In a module that imports names
+explicitly instead of `use gpui::prelude::*`, omitting it gives the opaque error
+`no method named background_spawn found for mutable reference &mut AsyncApp`. Add `AppContext`
+(the prelude covers it).
+
 ## Task lifetime
 
 - `Task<T>` is `#[must_use]`; **dropping it cancels** the future.

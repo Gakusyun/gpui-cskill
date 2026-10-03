@@ -7,14 +7,16 @@ For large collections of equal-height rows, `uniform_list` only renders the visi
 ```rust
 use gpui::{uniform_list, px};
 
-uniform_list("items", self.items.len(), |range, _window, _cx| {
+let items = self.items.clone(); // the closure is 'static
+
+uniform_list("items", items.len(), move |range, _window, _cx| {
     range
         .map(|ix| {
             div()
                 .id(ix)
                 .h(px(24.))
                 .px_2()
-                .child(self.items[ix].clone())
+                .child(items[ix].clone())
         })
         .collect()
 })
@@ -24,6 +26,40 @@ uniform_list("items", self.items.len(), |range, _window, _cx| {
 - First argument is the list id; second is the item count.
 - The callback receives the visible `Range<usize>` and must return exactly that many elements.
 - Give each row a stable `.id(...)` if it holds state.
+- **The row callback gets `&mut App`, not `&mut Context<T>`** (`Fn(Range<usize>, &mut Window,
+  &mut App) -> Vec<R>`). `cx.listener(...)` therefore **cannot** be used to build rows — it needs
+  a `Context<T>`. The closure must be `'static`, so clone the data you need in and, for row
+  callbacks that mutate state, capture `WeakEntity`/`Entity` clones:
+
+  ```rust
+  // Build this in Render::render, where you still have `&mut Context<Self>`.
+  let this_entity = cx.entity(); // `listener_for` wants a strong Entity
+  let items = self.items.clone();
+
+  uniform_list("items", items.len(), move |range, window, _cx| {
+      range
+          .map(|ix| {
+              div()
+                  .id(ix)
+                  // window.listener_for(&entity, ..) adapts a Context<T> handler into the
+                  // `Fn(&E, &mut Window, &mut App)` shape on_click wants.
+                  .on_click(window.listener_for(&this_entity, move |this, _event: &ClickEvent, _window, cx| {
+                      this.select(ix);
+                      cx.notify();
+                  }))
+                  .child(items[ix].clone())
+          })
+          .collect()
+  })
+  ```
+
+  (`Window::handler_for(&entity, ..)` is the sibling for callbacks that take no event argument.)
+
+  If that is too awkward, skip virtualization and use a plain `overflow_y_scroll` container
+  built with `.children(...)` / `.child(...)`, where `cx.listener` works normally.
+
+  Note: `List` (the variable-height list below) has the same `&mut App` callback signature, so
+  the same constraint applies there.
 - The list sets `overflow-y: scroll` itself; give it a bounded height (`.h(...)`, `.flex_1()`, …).
 
 ## Variable-height list

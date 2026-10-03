@@ -14,10 +14,31 @@ svg().path("icons/check.svg").size_4().text_color(rgb(0x22c55e));
 - `img(source)` accepts a path string or `ImageSource`; supported formats include png/jpg/gif/webp/
   bmp/ico/tiff/avif/exr/svg (see `Img::extensions()`).
 - Image styling (`StyledImage`): `.object_fit(...)`, `.image_cache(&entity)`.
-- `svg().path(..)` resolves through the app's `AssetSource`; `.external_path(..)` reads straight
-  from disk, `.data(&bytes)` embeds bytes directly.
+- `svg()` has exactly **two** setters: `.path(..)` (resolved through the app's `AssetSource`) and
+  `.external_path(..)` (read from disk). **There is no `.data(&bytes)`.** To embed icon bytes,
+  include them in an `AssetSource` implementation and reference them by `path` anyway.
+
+### SVG icons are alpha masks
+
+`Window::paint_svg` renders the SVG to an **alpha mask** and tints it with the element's
+`text_color`. Consequences:
+
+- Icons are **monochrome by construction**. Multi-colour artwork silently becomes a silhouette
+  and the SVG's own `fill` / `stroke` colours are ignored. Author icons as single-colour shapes.
+- Colour **cascades** from the parent, so hover states on icons are free:
+
+  ```rust
+  div()
+      .id("btn")
+      .hover(|s| s.text_color(rgb(0x93c5fd)))
+      .child(svg().path("icons/x.svg").size_4())
+  ```
 
 ## Registering an AssetSource
+
+`AssetSource` methods return `anyhow::Result<..>`, and `anyhow` is **not** re-exported as a
+crate (only `gpui::Result`, which is `anyhow::Result`). Either `cargo add anyhow` or write
+`gpui::Result<..>` in the impl signatures below.
 
 ```rust
 use gpui::{AssetSource, SharedString};

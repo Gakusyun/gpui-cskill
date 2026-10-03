@@ -93,6 +93,19 @@ In a window/entity context you can also use `cx.entity()` (strong) and `cx.weak_
 - Element-scoped caching: `div().id("x")` plus `.cached(...)` on the view context can skip
   re-rendering unchanged subtrees — get this right before optimizing.
 
+## The built-in HTTP client is GET-only
+
+The `HttpClient` trait that `App` owns has a single method:
+
+```rust
+fn get(&self, url: &str, follow_redirects: bool)
+    -> BoxFuture<'static, anyhow::Result<HttpResponse>>;
+```
+
+There is **no POST, PUT, or DELETE, and no way to set request headers**. That rules out JSON-RPC
+control of a bundled sidecar (aria2, yt-dlp, ffmpeg progress sockets, …). For those, spawn a
+small blocking client such as `ureq` from `cx.background_spawn` instead.
+
 ## Where things come from
 
 - Traits you almost always need are in `gpui::prelude::*`.
