@@ -41,6 +41,7 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 | --- | --- |
 | **An icon reserves its layout box but nothing is drawn** (an empty rectangle; the text beside it sits correctly) | The `Svg` has **no colour of its own**. `Svg::paint` guards on `style.text.color`; `None` skips `paint_svg` entirely. A `text_color` on an ancestor `Div` does **not** inherit to the `Svg`. Set `.text_color(..)` on the `Svg` itself — or use an `icon(path, size, tint)` helper with a required tint argument. **Do not** go looking at the asset path / `AssetSource`; a missing asset behaves differently. |
 | Icon appears as a flat silhouette / its SVG fills and strokes are ignored | `paint_svg` renders the SVG as an alpha mask tinted by `text_color`; multi-colour artwork cannot survive. Author icons as single-colour shapes. |
+| **Custom-titlebar Minimise / Maximise / Close buttons do nothing when pressed** (or the window just drags instead) | A `WindowControlArea::Drag` is on an **ancestor** of the buttons. Control hitboxes resolve in registration order, parents before children, so the `Drag` area captures the whole strip and the buttons never get `HTMINBUTTON`/`HTMAXBUTTON`/`HTCLOSE`. Move `Drag` to a **sibling** region. See `windows-and-globals.md`. |
 
 ## Differences from upstream GPUI / Zed
 

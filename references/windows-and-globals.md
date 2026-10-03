@@ -139,3 +139,73 @@ slot if you want one palette shared across windows.
 
 For window chrome, remember that `appears_transparent: true` + `window_control_area(...)` +
 `.start_window_move()` is how GPUI-CE apps build custom titlebars.
+
+## Custom title bars & window controls
+
+Set `titlebar.appears_transparent = true` to hide the native bar, then draw your own. There are
+two ways to make a region draggable:
+
+```rust
+use gpui::{WindowControlArea, div, px};
+
+// Declarative: the platform hit-tests this region and treats it as the caption.
+div().h(px(46.)).window_control_area(WindowControlArea::Drag)
+
+// Imperative equivalent, e.g. from an on_click handler:
+window.start_window_move();
+```
+
+Minimise / maximise / close buttons use the same mechanism. The platform performs the action, so
+there is **no `on_click` handler** — just tag each button with its area:
+
+```rust
+fn window_button(area: WindowControlArea) -> impl IntoElement {
+    div()
+        .id("win-close")
+        .size(px(30.))
+        .window_control_area(area)   // Min / Max / Close
+}
+```
+
+### The one rule: a `Drag` area must never be an ancestor of the buttons
+
+This is the titlebar equivalent of a silent failure — the buttons render normally and simply do
+nothing when pressed (or drag the window instead).
+
+When the platform asks "what is under the cursor?" it walks the registered window-control hitboxes
+in **registration order and returns the first match**. Paint registers an element before its
+children, and the hit test includes ancestor hitboxes, so a `Drag` area on a wrapper wins over a
+`Min`/`Max`/`Close` area on a descendant. The platform then sees `HTCAPTION` for the whole strip,
+and the button hit codes are never reached.
+
+```rust
+// WRONG — pressing any button drags the window; the buttons are unreachable.
+div()
+    .window_control_area(WindowControlArea::Drag)
+    .child(window_button(WindowControlArea::Min))
+    .child(window_button(WindowControlArea::Max))
+    .child(window_button(WindowControlArea::Close))
+
+// RIGHT — the draggable strip is a *sibling* of the buttons, so exactly one control
+// area contains the cursor when it is over a button.
+div()
+    .flex().flex_row().items_center()
+    .child(
+        div()
+            .flex_1().h_full()
+            .window_control_area(WindowControlArea::Drag),
+    )
+    .child(window_button(WindowControlArea::Min))
+    .child(window_button(WindowControlArea::Max))
+    .child(window_button(WindowControlArea::Close))
+```
+
+Related details:
+
+- The button element needs a stable `.id(...)` for hover/group styling; the control area itself
+  forces a hitbox to be registered, so it works even without one.
+- The `Min`/`Max` mapping depends on `WindowOptions::is_minimizable` / `is_resizable` /
+  `is_movable`: if minimise is disabled but the window is movable, `Min` degrades to `HTCAPTION`;
+  if neither, it becomes `HTNOWHERE`. `Close` is always `HTCLOSE`.
+- The three control areas are `Drag`, `Min`, `Max`, `Close`. `Max` toggles between maximised and
+  restored; you do not need to branch on `window.is_maximized()` yourself.
