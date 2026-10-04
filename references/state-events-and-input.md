@@ -35,6 +35,24 @@ div()
 `cx.listener` needs `&Context<T>`. For closures that must not borrow the context, build the
 handler manually via `window.listener_for(&entity, ...)` or `window.handler_for(...)`.
 
+> **Your callback runs while its entity is leased — never re-enter it.**
+> `cx.listener(..)` dispatches through `view.update(cx, |view, cx| ..)`, so for the whole
+> closure that entity is checked out of the entity map: any `read`/`update` of **that same
+> entity** inside the callback panics with `cannot read my_app::Widget while it is already
+> being updated`, and the usual `panic in a function that cannot unwind` follow-up kills the
+> process. Other entities are safe (leases are per entity), and a plain non-`listener` closure
+> holds no lease. To touch your own entity after the callback, leave the lease first:
+>
+> ```rust
+> // inside cx.listener(..):
+> let me = cx.entity(); // clone of the leased entity
+> window.defer(cx, move |_window, cx| me.update(cx, |this, cx| this.commit(cx)));
+> ```
+>
+> `window.defer` (or `cx.defer(..)`) queues an `Effect::Defer`, flushed at the outermost update
+> level — after every `Entity::update` lease has closed, same frame. Widgets invoking caller
+> callbacks from inside their own `update` must defer them too — see `assets-and-drawing.md`.
+
 ## Common event handlers
 
 | Category | Methods |

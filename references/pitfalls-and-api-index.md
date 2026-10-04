@@ -13,6 +13,7 @@
 | `no method named notify` on `&mut App` / `&mut Window` | `notify` lives on `Context<T>`. Use `cx.notify(entity_id)` on `App`. |
 | `expected Entity<T>, found T` | Read with `entity.read(cx)`, mutate with `entity.update(cx, ..)`. |
 | Can't call `self.method()` inside a closure | `cx.listener(Self::method)`, or clone a `WeakEntity` and call `.update`. |
+| `no method named opacity found` for a generic element type (`E`, `impl IntoElement`) | Styling helpers such as `opacity` live on `Styled`, not `IntoElement`. Bound the helper with `E: Styled`, or use/constrain the concrete element type. |
 | `impl IntoElement` return mismatch | `Render::render` must return `impl IntoElement`; return `div()`, not a `Div` value typed wrongly. |
 | `.child(option)` does not compile | `Option<T>` is not `IntoElement`; use `.when_some(option, \|el, v\| el.child(v))`. |
 | View never updates | You forgot `cx.notify()`; observers only fire on `notify`. |
@@ -52,6 +53,14 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 | **Every character is inserted twice** after adding IME support | Both the input handler *and* the `on_key_down` `key_char` branch are inserting, and `on_key_down` did not `cx.stop_propagation()` (which is what suppresses the follow-up `WM_CHAR`). Keep only the handler for text, or stop propagation. |
 | **IME leaves the phonetic text behind** (type `z`, pick 中, get `z中`) | `replace_text_in_range(None, text)` means "replace the **marked/composing** range", not "insert at the caret". Resolve `None` as `marked_text_range()` → selection → caret. See `text-input-ime-and-selection.md`. |
 | **A hover/press transition flashes or never plays** (`with_animation` looks like it should work) | Animation state is keyed by the element id. Encoding the state in the id (`("btn", hovered)`) mounts a *new* animation that restarts at `delta = 0` every frame (a flash); a fixed id keeps the finished one-shot at `delta = 1.0` and never replays. Use `.hover(..)`/`.group_hover(..)`, `.transitions(..)`, or a **stable-id** `with_spring(..)` whose `.to(..)` target you retarget on the state. See `animation-and-motion.md`. |
+| **`.opacity(0.3)` compiles but nothing fades** | Only a `Div` applies element opacity — its paint wraps the whole subtree in the window's paint-time opacity. `.opacity(..)` on `svg()`, `img()`, `list()`, … sets a value their paint paths never read: it compiles and silently does nothing. Put it on a wrapping or ancestor `div()`. See `layout-and-styling.md`. |
+
+## Runtime panics
+
+| Panic message | Cause / fix |
+| --- | --- |
+| `cannot read my_app::Widget while it is already being updated`, often followed by `panic in a function that cannot unwind` (the process dies) | The callback ran while that entity was leased: a `cx.listener(..)` callback touching its **own** entity, or a widget invoking a caller callback from inside its own `update`. Same-entity `read`/`update` is never allowed there — defer past the lease with `window.defer(cx, ..)`. See `state-events-and-input.md`. |
+| `Window::prompt` panics when called again before the previous prompt resolved | Prompts are single-use; open the next one from the previous one's result. See `dialogs-and-overlays.md`. |
 
 ## Differences from upstream GPUI / Zed
 
@@ -106,7 +115,7 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 **State & events**
 `cx.new`, `Entity::read/update/downgrade`, `cx.listener`, `cx.observe`, `cx.subscribe`, `cx.emit`,
 `EventEmitter`, `cx.observe_global`, `cx.observe_release`, `Window::use_state`,
-`Window::use_keyed_state`, `Window::use_keyed_transition`.
+`Window::use_keyed_state`, `Window::use_keyed_transition`, `cx.defer(..)`, `window.defer(..)`.
 
 **Input & actions**
 `on_click`, `on_hover`, `on_mouse_down/up/move`, `on_key_down/up`, `on_scroll_wheel`, `on_pinch`,

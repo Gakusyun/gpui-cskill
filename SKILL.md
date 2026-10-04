@@ -80,6 +80,10 @@ fn main() {
    build it as a struct literal with `..Default::default()`.
 8. There is **no built-in text input element** (`gpui::TextInput`, `TextArea`, …). You build
    one from `track_focus` + `on_key_down` + `is_focused`; see `references/text-input.md`.
+9. A `cx.listener(..)` callback runs **while that entity is leased**: `read` / `update` on that
+   same entity inside its own callback is an instant `cannot read … while it is already being
+   updated` panic that takes the process down. Leave the lease first with `window.defer(cx, ..)`;
+   see `references/state-events-and-input.md`.
 
 ## Reference index — load only what the task needs
 

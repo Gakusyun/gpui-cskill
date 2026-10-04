@@ -52,6 +52,9 @@ For hover/press/selected either use the framework's paint-time pseudo-styles
 (`.hover(..)` / `.group_hover(..)`, see `layout-and-styling.md`), the CSS-like
 `.transitions(..)`, or the state-driven spring below.
 
+For entrances, pair the fade with a small upward lift: alongside `.opacity(delta)`, add
+`.mt(px(8.) * (1. - delta))` so the card settles the last few pixels — calmer than a pure fade.
+
 ### `with_spring`: state-driven motion on a stable key
 
 A spring animates *toward* a target instead of replaying a timeline, and its element id is a

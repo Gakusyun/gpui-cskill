@@ -20,7 +20,7 @@ div()
     .rounded_lg()           // rounded_sm/md/lg/xl/full, .rounded(px(12.))
     .border_1().border_color(rgb(0x333333)).border_dashed()
     .shadow_md()            // shadow_sm/md/lg/xl
-    .opacity(0.8)
+    .opacity(0.8)           // element opacity: fades the subtree ("Element opacity" below)
     .overflow_hidden()      // overflow_scroll() / overflow_y_scroll()
     .absolute().top_2().left_2()   // also .relative() and .inset_0()
     .cursor_pointer()
@@ -80,6 +80,16 @@ div()
 ```
 
 `when`, `when_some`, `when_else`, and `map` come from `FluentBuilder` (in the prelude).
+
+## Element opacity
+
+`Styled::opacity(f32)` is real and paint-time: on a `Div` it fades the **whole subtree** —
+background, border, text and every descendant, `svg()`/`img()` children included. Two traps:
+
+- **Only `Div` honours it** — `svg()`, `img()`, `list()`, … accept `.opacity(..)` (a `Styled`
+  default) but their paint paths never read it: silent no-op; wrap them in `div().opacity(..)`.
+- **It is not `ColorExt::opacity`**, which scales one colour's alpha (placeholder text, hover
+  tint), not a subtree.
 
 ## Styles do not inherit
 

@@ -230,6 +230,13 @@ impl Element for MyWidget {
 Accessibility hooks are optional: `a11y_role()`, `is_a11y_hidden()`, `write_a11y_info()`,
 `a11y_synthetic_children()`.
 
+### Don't invoke caller callbacks from inside your own update
+
+A stateful widget (`Entity<T>`) calling a caller-supplied handler — `on_submit`, `on_change`, … —
+while its own `update` is on the stack puts the caller's `widget.read(cx)` on top of an existing
+lease (`cannot read … while it is already being updated` — the process dies). Dispatch through
+`window.defer(cx, ..)` so the lease is back first; details in `state-events-and-input.md`.
+
 ## Other layout/overlay elements
 
 | Constructor | What it does |

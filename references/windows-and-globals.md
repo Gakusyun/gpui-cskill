@@ -71,7 +71,7 @@ window.use_state(cx, |window, cx| ...);
 window.use_keyed_transition(key, cx, motion, init);
 window.start_window_move();                // custom titlebar dragging
 window.on_next_frame(|window, cx| { /* ... */ });
-window.defer(cx, |window, cx| { /* after this update cycle */ });
+window.defer(cx, |window, cx| { /* end of this update cycle, after all entity leases return */ });
 window.close(); / window.remove_window();
 ```
 
