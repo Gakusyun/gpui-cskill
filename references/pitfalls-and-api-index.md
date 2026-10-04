@@ -51,6 +51,7 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 | **A field draws a caret and focus ring, but no key ever reaches `on_key_down`** (backspace/arrows/Escape all dead) | The focused element was never `.track_focus(..)`ed, so the focus handle is not registered in the dispatch tree. Key dispatch falls back to `DispatchNodeId(0)` — the framework root, not your `div` — and every key is dropped with no warning, while `is_focused()` still returns `true`. Add `.track_focus(&self.focus)` to the element that handles keys. See `text-input.md`. |
 | **Every character is inserted twice** after adding IME support | Both the input handler *and* the `on_key_down` `key_char` branch are inserting, and `on_key_down` did not `cx.stop_propagation()` (which is what suppresses the follow-up `WM_CHAR`). Keep only the handler for text, or stop propagation. |
 | **IME leaves the phonetic text behind** (type `z`, pick 中, get `z中`) | `replace_text_in_range(None, text)` means "replace the **marked/composing** range", not "insert at the caret". Resolve `None` as `marked_text_range()` → selection → caret. See `text-input-ime-and-selection.md`. |
+| **A hover/press transition flashes or never plays** (`with_animation` looks like it should work) | Animation state is keyed by the element id. Encoding the state in the id (`("btn", hovered)`) mounts a *new* animation that restarts at `delta = 0` every frame (a flash); a fixed id keeps the finished one-shot at `delta = 1.0` and never replays. Use `.hover(..)`/`.group_hover(..)`, `.transitions(..)`, or a **stable-id** `with_spring(..)` whose `.to(..)` target you retarget on the state. See `animation-and-motion.md`. |
 
 ## Differences from upstream GPUI / Zed
 
@@ -128,7 +129,8 @@ These compile fine and produce no warning or log; they show up only as wrong/emp
 **Animation**
 `Animation`, `AnimationExt`, `Transformation`, `Motion`, `MotionDurationExt`, `millis`, `spring`,
 `ease_in_out`, `linear`, `bounce`, `Animated`, `Transition`, `use_transition`,
-`use_keyed_transition`, `.with_animation`, `.transitions`.
+`use_keyed_transition`, `.with_animation`, `.with_spring`, `SpringAnimation`, `SpringConfig`,
+`SpringDescription`, `SpringPlayback`, `AnimationPhase`, `.transitions`.
 
 **Windows & app**
 `WindowOptions`, `WindowBounds`, `TitlebarOptions`, `WindowKind`, `WindowControlArea`,

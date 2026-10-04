@@ -2,7 +2,8 @@
 
 Three related tools:
 
-1. **`with_animation`** — declarative, per-element, driven by the framework.
+1. **`with_animation`** — declarative, per-element, driven by the framework; **`with_spring`** —
+   a retargetable spring for state-driven values (same `AnimationExt` trait).
 2. **Transitions** — animate a value you own (`Transition<T>`), or animate style changes
    (`.transitions(...)`, see `layout-and-styling.md`).
 3. **`Animated<T>`** — implicit "animate toward the latest target" values.
@@ -34,6 +35,52 @@ svg()
 - Chain multiple animations by calling `.with_animation(id, ..)` repeatedly; they run in sequence.
 - `Transformation::rotate/scale/translate`; `percentage(delta)` maps `0..1` to `0%..100%`.
 - Easing helpers: `linear`, `ease_in_out`, `ease_out_quint()`, `bounce(easing)`.
+
+### Don't drive a toggling state with `with_animation`
+
+`with_animation` is only for motion that **appears once and doesn't reverse**: modals fading in,
+panels sliding out, progress. Its state lives in the element-state tree under the element id
+(`AnimationState { start, animation_ix }`), so:
+
+- put the state in the id (e.g. `(id, "in")` / `(id, "out")`) and every change **mounts a brand
+  new animation** that restarts at `delta = 0` — for an "out" transition that first paints the
+  hover colour, so hover in/out visibly flashes;
+- keep the id fixed and a finished one-shot stays at `delta = 1.0` forever — it never replays, so
+  hover does nothing.
+
+For hover/press/selected either use the framework's paint-time pseudo-styles
+(`.hover(..)` / `.group_hover(..)`, see `layout-and-styling.md`), the CSS-like
+`.transitions(..)`, or the state-driven spring below.
+
+### `with_spring`: state-driven motion on a stable key
+
+A spring animates *toward* a target instead of replaying a timeline, and its element id is a
+stable key that preserves the spring's position **and velocity** across target changes. This is
+the right primitive when the state you animate lives outside the element (hover, toggles):
+
+```rust
+use gpui::{AnimationExt as _, SpringAnimation, SpringConfig};
+
+let hovered = *hover.read(cx);
+div().with_spring(
+    "btn-fill",                                          // stable key: never encode state in it
+    SpringAnimation::new(SpringConfig::new(600., 30., 1.))
+        .to(hovered)                                     // bool -> AnimationPhase (0..=1)
+        .from(false),                                    // coordinate on first mount
+    move |el, phase| el.bg(phase.interpolate(base, hover_bg)),
+)
+```
+
+- `SpringAnimation::new(config).to(target)`: `target` is `f32`, `Pixels`, `Rems`, `bool`
+  (→ `AnimationPhase`), or `AnimationPhase`. `.from(target)` sets the first-mount coordinate;
+  without it a newly mounted spring starts already at its target.
+- `AnimationPhase::interpolate(from, to)` / `.interpolate_clamped(..)` lerp any `Interpolate`
+  type (`f32`, `Rgba`, `Hsla`, `Pixels`, `Rems`); `.interpolate_between(range, ..)` maps a
+  sub-range. A colour transition is just two colours and a phase.
+- `.with_epsilon(..)` sets the settle tolerance; `.playback(SpringPlayback::Paused | Stopped |
+  Completed | Cancelled)` pauses or resolves it (`Running` is the default).
+- The id must stay **independent of the animated state**. `"btn"` is right; `("btn", hovered)`
+  reintroduces the remount bug.
 
 ## 2. Transitions
 
